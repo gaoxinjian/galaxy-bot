@@ -1,42 +1,39 @@
-# sv
+# Galaxy Bot Frontend
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+Svelte 5 + Tailwind CSS 前端界面。
 
-## Creating a project
+## 启动
 
-If you're seeing this, you've probably already done this step. Congrats!
-
-```sh
-# create a new project
-npx sv create my-app
+```bash
+npm install
+npm run dev    # 开发服务器
 ```
 
-To recreate this project with the same configuration:
+## 构建
 
-```sh
-# recreate this project
-npx sv@0.15.1 create --template minimal --types ts --add prettier eslint vitest="usages:unit,component" tailwindcss="plugins:none" sveltekit-adapter="adapter:node" playwright mdsvex --install npm ./
-```
-
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```sh
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
-
-## Building
-
-To create a production version of your app:
-
-```sh
+```bash
 npm run build
+npm run preview
 ```
 
-You can preview the production build with `npm run preview`.
+## 技术要点
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+- **Svelte 5**: 使用 `$state()` 响应式语法
+- **流式渲染**: 通过 `ReadableStream` 逐字显示 AI 回复
+- **代理配置**: 开发时请求转发到 http://localhost:3001
+
+## 项目结构
+
+```
+src/
+├── routes/
+│   └── +page.svelte    # 主聊天界面
+├── store/
+│   └── chat.ts         # 状态管理（预留）
+└── app.html
+```
+
+## 注意事项
+
+- 确保后端已启动在 3001 端口
+- 浏览器需支持 `ReadableStream` 和 `TextDecoder`

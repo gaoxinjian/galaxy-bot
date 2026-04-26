@@ -16,7 +16,7 @@
     };
   }
 
-  let messages: Message[] = [];
+  let messages: Message[] = $state([]);
   let input = '';
   let models: Model[] = $state([]);  // ← 用 $state
   let selectedModel = $state('');     // ← 用 $state
@@ -95,22 +95,28 @@
         throw new Error('No response body');
       }
 
-      const reader = response.body.getReader();
+      const streamReader = response.body.getReader();
       const decoder = new TextDecoder();
-      let assistantMessage = '';
 
-      messages = [...messages, { role: 'assistant', content: '' }];
+      let assistantContent = '';
+      messages = [...messages, { role: 'assistant', content: assistantContent }];
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      try {
+        while (true) {
+          const { done, value } = await streamReader.read();
+          if (done) break;
 
-        const chunk = decoder.decode(value);
-        console.log('Chunk:', chunk);
-        assistantMessage += chunk;
-
-        messages[messages.length - 1].content = assistantMessage;
-        messages = messages;
+          const chunk = decoder.decode(value, { stream: true });
+          console.log('Chunk:', chunk);
+          assistantContent += chunk;
+          
+          // 替换最后一条消息的内容
+          messages = messages.map((m, i) => 
+            i === messages.length - 1 ? { ...m, content: assistantContent } : m
+          );
+        }
+      } finally {
+        streamReader.releaseLock();
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);

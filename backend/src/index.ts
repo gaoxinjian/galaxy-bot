@@ -68,6 +68,7 @@ app.post('/api/chat', async (c) => {
     }
 
     // 流式调用Ollama
+    c.header('Content-Type', 'text/plain; charset=utf-8');
     return stream(c, async (writer) => {
       try {
         const response = await axios.post(
@@ -85,35 +86,42 @@ app.post('/api/chat', async (c) => {
           }
         );
 
-        response.data.on('data', async (chunk: Buffer) => {
-          try {
-            const lines = chunk.toString().split('\n');
-            for (const line of lines) {
-              if (line.trim()) {
-                const json = JSON.parse(line);
-                if (json.response) {
-                  await writer.write(json.response);
+        await new Promise<void>((resolve, reject) => {
+          response.data.on('data', async (chunk: Buffer) => {
+            try {
+              const lines = chunk.toString().split('\n');
+              for (const line of lines) {
+                if (line.trim()) {
+                  const json = JSON.parse(line);
+                  if (json.response) {
+                    await writer.write(new TextEncoder().encode(json.response));
+                  }
+                  if (json.done) {
+                    resolve();
+                  }
                 }
               }
+            } catch (error) {
+              console.error('Error parsing chunk:', error);
             }
-          } catch (error) {
-            console.error('Error parsing chunk:', error);
-          }
+          });
+
+          response.data.on('end', () => {
+            resolve();
+          });
+
+          response.data.on('error', (error: Error) => {
+            console.error('Stream error:', error);
+            reject(error);
+          });
         });
 
-        response.data.on('end', async () => {
-          await writer.write('\n');
-        });
-
-        response.data.on('error', async (error: Error) => {
-          console.error('Stream error:', error);
-          await writer.write(`\n[Error: ${error.message}]\n`);
-        });
+        await writer.write(new TextEncoder().encode('\n'));
       } catch (error) {
         console.error('Request error:', error);
-        await writer.write(
+        await writer.write(new TextEncoder().encode(
           `\n[Error: ${error instanceof Error ? error.message : 'Unknown error'}]\n`
-        );
+        ));
       }
     });
   } catch (error) {
@@ -139,8 +147,3 @@ serve({
 }, (info) => {
   console.log(`Server running on http://localhost:${port}`);
 });
-
-// export default {
-//   port,
-//   fetch: app.fetch,
-// };
