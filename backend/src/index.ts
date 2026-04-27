@@ -3,6 +3,8 @@ import { cors } from 'hono/cors';
 import { serve } from '@hono/node-server';
 import { stream } from 'hono/streaming';
 import axios from 'axios';
+import sessions from './routes/sessions';
+import { SessionService } from './services/sessionService';
 
 const app = new Hono();
 
@@ -54,11 +56,11 @@ app.get('/api/models', async (c) => {
   }
 });
 
-// POST /api/chat - 流式聊天
+// POST /api/chat - 流式聊天（支持会话上下文）
 app.post('/api/chat', async (c) => {
   try {
     const body = await c.req.json();
-    const { message, model, temperature, topP, topK } = body;
+    const { message, model, sessionId, temperature, topP, topK } = body;
 
     if (!message || !model) {
       return c.json(
@@ -67,15 +69,40 @@ app.post('/api/chat', async (c) => {
       );
     }
 
-    // 流式调用Ollama
+    // 验证会话是否存在
+    let session = null;
+    if (sessionId) {
+      session = SessionService.getSession(sessionId);
+      if (!session) {
+        return c.json({ error: 'Session not found' }, { status: 404 });
+      }
+    }
+
+    // 保存用户消息
+    if (sessionId) {
+      SessionService.addMessage(sessionId, 'user', message);
+    }
+
+    // 构建消息历史（用于上下文）
+    const messages: Array<{ role: string; content: string }> = [];
+    if (sessionId) {
+      const history = SessionService.getRecentMessages(sessionId, 10);
+      messages.push(...history.map(m => ({ role: m.role, content: m.content })));
+    } else {
+      messages.push({ role: 'user', content: message });
+    }
+
+    // 流式调用Ollama（使用 /api/chat 接口支持多轮对话）
     c.header('Content-Type', 'text/plain; charset=utf-8');
     return stream(c, async (writer) => {
+      let fullResponse = '';
+
       try {
         const response = await axios.post(
-          `${OLLAMA_API}/generate`,
+          `${OLLAMA_API}/chat`,
           {
             model,
-            prompt: message,
+            messages,
             stream: true,
             temperature: temperature ?? modelConfigs[model]?.temperature ?? 0.7,
             top_p: topP ?? modelConfigs[model]?.topP ?? 0.9,
@@ -93,8 +120,9 @@ app.post('/api/chat', async (c) => {
               for (const line of lines) {
                 if (line.trim()) {
                   const json = JSON.parse(line);
-                  if (json.response) {
-                    await writer.write(new TextEncoder().encode(json.response));
+                  if (json.message?.content) {
+                    fullResponse += json.message.content;
+                    await writer.write(new TextEncoder().encode(json.message.content));
                   }
                   if (json.done) {
                     resolve();
@@ -116,6 +144,11 @@ app.post('/api/chat', async (c) => {
           });
         });
 
+        // 保存AI回复
+        if (sessionId && fullResponse) {
+          SessionService.addMessage(sessionId, 'assistant', fullResponse);
+        }
+
         await writer.write(new TextEncoder().encode('\n'));
       } catch (error) {
         console.error('Request error:', error);
@@ -131,6 +164,9 @@ app.post('/api/chat', async (c) => {
     );
   }
 });
+
+// 会话路由
+app.route('/api/sessions', sessions);
 
 // 健康检查
 app.get('/health', (c) => {
