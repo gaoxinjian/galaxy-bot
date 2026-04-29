@@ -1,20 +1,8 @@
 import { writable } from 'svelte/store';
+import type { Session, Message } from './types';
 
-export interface Session {
-  id: string;
-  title: string;
-  model: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Message {
-  id: number;
-  session_id: string;
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-  created_at: string;
-}
+// 重新导出类型，保持兼容性
+export type { Session, Message };
 
 // 当前选中的会话
 export const currentSession = writable<Session | null>(null);

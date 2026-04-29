@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { serve } from '@hono/node-server';
 import axios from 'axios';
-import { PORT } from './config';
+import { PORT, getModelParameters, getModelDisplayName } from './config';
 import sessions from './routes/sessions';
 import chat from './routes/chat';
 
@@ -16,22 +16,25 @@ app.use('*', cors({
   credentials: false,
 }));
 
-// GET /api/models - 获取可用模型
+// GET /api/models - 获取可用模型（包含完整参数配置）
 app.get('/api/models', async (c) => {
   try {
     const response = await axios.get(`${process.env.OLLAMA_API || 'http://localhost:11434/api'}/tags`);
     const models = response.data.models || [];
-    
+
     return c.json({
-      models: models.map((m: any) => ({
-        name: m.name,
-        config: {
-          displayName: m.name,
-          temperature: 0.7,
-          topP: 0.9,
-          topK: 40,
-        },
-      })),
+      models: models.map((m: any) => {
+        const modelName = m.name;
+        const parameters = getModelParameters(modelName);
+
+        return {
+          name: modelName,
+          config: {
+            displayName: getModelDisplayName(modelName),
+            parameters,
+          },
+        };
+      }),
     });
   } catch (error) {
     return c.json({ error: 'Failed to fetch models' }, { status: 500 });

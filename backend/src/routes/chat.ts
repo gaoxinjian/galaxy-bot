@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { stream } from 'hono/streaming';
 import axios from 'axios';
 import { SessionService } from '../services/sessionService';
-import { OLLAMA_API, modelConfigs } from '../config';
+import { OLLAMA_API, buildOllamaOptions } from '../config';
 
 const chat = new Hono();
 
@@ -10,7 +10,7 @@ const chat = new Hono();
 chat.post('/', async (c) => {
   try {
     const body = await c.req.json();
-    const { message, model, sessionId, temperature, topP, topK } = body;
+    const { message, model, sessionId, options: userOptions } = body;
 
     if (!message || !model) {
       return c.json(
@@ -44,15 +44,16 @@ chat.post('/', async (c) => {
       let fullResponse = '';
 
       try {
+        // 构建 Ollama 参数：用户传入的 options 覆盖配置文件默认值
+        const ollamaOptions = buildOllamaOptions(model, userOptions || {});
+
         const response = await axios.post(
           `${OLLAMA_API}/chat`,
           {
             model,
             messages,
             stream: true,
-            temperature: temperature ?? modelConfigs[model]?.temperature ?? 0.7,
-            top_p: topP ?? modelConfigs[model]?.topP ?? 0.9,
-            top_k: topK ?? modelConfigs[model]?.topK ?? 40,
+            ...ollamaOptions,
           },
           { responseType: 'stream' }
         );

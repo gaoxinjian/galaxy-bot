@@ -11,6 +11,14 @@
     type Session 
   } from '$lib/sessionStore';
 
+  // 自动聚焦动作
+  function focusOnMount(node: HTMLInputElement) {
+    node.focus();
+    return {
+      destroy() {}
+    };
+  }
+
   let editingId: string | null = $state(null);
   let editingTitle = $state('');
   let isCreating = $state(false);
@@ -67,8 +75,9 @@
     <button
       onclick={() => isCreating = true}
       class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center justify-center gap-2 transition-colors"
+      aria-label="新建会话"
     >
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
       </svg>
       新建会话
@@ -78,13 +87,15 @@
   <!-- 新建会话输入框 -->
   {#if isCreating}
     <div class="p-4 border-b border-gray-800 bg-gray-800/50">
+      <label for="new-session-title" class="sr-only">会话名称</label>
       <input
+        id="new-session-title"
         type="text"
         bind:value={newSessionTitle}
         placeholder="输入会话名称..."
         onkeydown={(e) => e.key === 'Enter' && handleCreateSession()}
         class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
-        autofocus
+        use:focusOnMount
       />
       <div class="flex gap-2 mt-2">
         <button
@@ -117,6 +128,10 @@
               ? 'bg-gray-700 text-white' 
               : 'hover:bg-gray-800 text-gray-300'}"
           onclick={() => selectSession(session)}
+          onkeydown={(e) => e.key === 'Enter' && selectSession(session)}
+          role="button"
+          tabindex="0"
+          aria-label="选择会话: {session.title}"
         >
           <div class="flex items-center justify-between">
             <div class="flex-1 min-w-0">
@@ -127,7 +142,7 @@
                   onkeydown={(e) => e.key === 'Enter' && handleUpdateTitle(session.id)}
                   onblur={() => handleUpdateTitle(session.id)}
                   class="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded text-white text-sm focus:outline-none"
-                  autofocus
+                  use:focusOnMount
                 />
               {:else}
                 <div class="font-medium truncate">{session.title}</div>
@@ -143,6 +158,7 @@
                 onclick={(e) => { e.stopPropagation(); startEditing(session); }}
                 class="p-1.5 text-gray-400 hover:text-white hover:bg-gray-600 rounded"
                 title="重命名"
+                aria-label="重命名会话"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
@@ -152,6 +168,7 @@
                 onclick={(e) => handleDeleteSession(e, session.id)}
                 class="p-1.5 text-gray-400 hover:text-red-400 hover:bg-gray-600 rounded"
                 title="删除"
+                aria-label="删除会话"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
