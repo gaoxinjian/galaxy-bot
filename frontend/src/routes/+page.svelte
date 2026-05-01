@@ -1,9 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import SessionList from '../components/SessionList.svelte';
-  import ModelSelector from '../components/ModelSelector.svelte';
   import ChatMessages from '../components/ChatMessages.svelte';
   import ChatInput from '../components/ChatInput.svelte';
+  import ModelConfigModal from '../components/ModelConfigModal.svelte';
   import {
     currentSession,
     sessionMessages,
@@ -23,10 +23,17 @@
   let input = $state('');
   let isLoading = $state(false);
   let error = $state('');
+  let isModelModalOpen = $state(false);
 
   // 订阅 models store
   let models = $state<Model[]>([]);
   modelsStore.subscribe(m => models = m);
+
+  // 获取当前模型显示名称
+  let currentModelDisplayName = $derived(() => {
+    const model = models.find(m => m.name === $selectedModel);
+    return model?.config.displayName || $selectedModel || '选择模型';
+  });
 
   // 初始化
   onMount(() => {
@@ -127,35 +134,57 @@
   }
 </script>
 
-<div class="flex h-screen bg-gray-100">
+<div class="flex h-screen overflow-hidden">
   <!-- 左侧会话列表 -->
-  <aside class="w-64 bg-gray-900 text-white flex flex-col border-r border-gray-800">
+  <aside class="w-72 glass-card m-3 mr-0 flex flex-col overflow-hidden">
     <SessionList />
   </aside>
 
-  <!-- 中间模型选择栏 -->
-  <aside class="w-64 bg-gray-800 text-white p-4 flex flex-col border-r border-gray-700">
-    <h2 class="text-lg font-semibold mb-4">设置</h2>
-
-    {#if error}
-      <div class="mb-4 p-3 bg-red-600 rounded text-sm">
-        {error}
-      </div>
-    {/if}
-
-    <div class="flex-1 overflow-y-auto">
-      <ModelSelector disabled={isLoading} />
-    </div>
-  </aside>
-
   <!-- 主聊天区域 -->
-  <main class="flex-1 flex flex-col bg-white">
+  <main class="flex-1 flex flex-col m-3 glass-card overflow-hidden">
+    <!-- 顶部模型选择栏 -->
+    <header class="flex items-center justify-between px-6 py-4 border-b border-cyan-500/20">
+      <div class="flex items-center gap-3">
+        <div class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></div>
+        <span class="text-sm text-gray-400">MODEL:</span>
+        <button
+          onclick={() => isModelModalOpen = true}
+          class="flex items-center gap-2 px-4 py-2 bg-black/30 border border-cyan-500/30 rounded-lg
+                 hover:border-cyan-400 hover:bg-cyan-500/10 transition-all group"
+        >
+          <span class="font-medium text-cyan-300">{currentModelDisplayName()}</span>
+          <svg class="w-4 h-4 text-gray-500 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- 右侧状态指示 -->
+      <div class="flex items-center gap-4">
+        {#if error}
+          <div class="flex items-center gap-2 text-red-400 text-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span>{error}</span>
+          </div>
+        {:else}
+          <div class="flex items-center gap-2 text-emerald-400 text-sm">
+            <div class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
+            <span>就绪</span>
+          </div>
+        {/if}
+      </div>
+    </header>
+
+    <!-- 聊天消息区域 -->
     <ChatMessages
       messages={$sessionMessages}
       isLoading={isLoading}
       emptyState={!$currentSession}
     />
 
+    <!-- 输入区域 -->
     <ChatInput
       bind:value={input}
       disabled={isLoading}
@@ -165,11 +194,8 @@
   </main>
 </div>
 
-<style>
-  :global(body) {
-    margin: 0;
-    padding: 0;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-      'Helvetica Neue', Arial, sans-serif;
-  }
-</style>
+<!-- 模型配置弹窗 -->
+<ModelConfigModal
+  isOpen={isModelModalOpen}
+  onClose={() => isModelModalOpen = false}
+/>
