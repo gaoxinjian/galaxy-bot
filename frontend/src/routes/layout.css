@@ -3,8 +3,8 @@
 /* 赛博朋克主题变量 */
 :root {
   --cyber-bg: #0a0a1a;
-  --cyber-card: rgba(20, 20, 40, 0.75);
-  --cyber-card-hover: rgba(30, 30, 60, 0.85);
+  --cyber-card: rgba(20, 20, 40, 0.65);
+  --cyber-card-hover: rgba(30, 30, 60, 0.70);
   --cyber-border: rgba(100, 100, 255, 0.3);
   --cyber-border-glow: rgba(0, 212, 255, 0.5);
   --cyber-glow: 0 0 20px rgba(0, 212, 255, 0.3);
@@ -53,10 +53,12 @@ body {
 /* 玻璃态卡片基础样式 */
 .glass-card {
   background: var(--cyber-card);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
   border: 1px solid var(--cyber-border);
   border-radius: 12px;
+  transform: translateZ(0);
+  will-change: transform;
 }
 
 /* 霓虹发光效果 */

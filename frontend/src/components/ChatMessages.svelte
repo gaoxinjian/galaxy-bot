@@ -25,6 +25,7 @@
 <div
   bind:this={messagesContainer}
   class="flex-1 overflow-y-auto p-6 space-y-4"
+  style="transform: translateZ(0); will-change: scroll-position;"
 >
   {#if emptyState}
     <div class="flex flex-col items-center justify-center h-full text-center">

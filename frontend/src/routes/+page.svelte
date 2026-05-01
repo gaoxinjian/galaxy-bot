@@ -134,14 +134,14 @@
   }
 </script>
 
-<div class="flex h-screen overflow-hidden">
+<div class="flex h-screen overflow-hidden px-[150px]">
   <!-- 左侧会话列表 -->
-  <aside class="w-72 glass-card m-3 mr-0 flex flex-col overflow-hidden">
+  <aside class="w-72 glass-card my-3 mr-3 flex flex-col overflow-hidden">
     <SessionList />
   </aside>
 
   <!-- 主聊天区域 -->
-  <main class="flex-1 flex flex-col m-3 glass-card overflow-hidden">
+  <main class="flex-1 flex flex-col my-3 glass-card overflow-hidden">
     <!-- 顶部模型选择栏 -->
     <header class="flex items-center justify-between px-6 py-4 border-b border-cyan-500/20">
       <div class="flex items-center gap-3">
