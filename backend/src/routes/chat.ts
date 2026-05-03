@@ -10,7 +10,7 @@ const chat = new Hono();
 chat.post('/', async (c) => {
   try {
     const body = await c.req.json();
-    const { message, model, sessionId, options: userOptions } = body;
+    const { message, model, sessionId, think = false, options: userOptions } = body;
 
     if (!message || !model) {
       return c.json(
@@ -46,12 +46,15 @@ chat.post('/', async (c) => {
       try {
         // 构建 Ollama 参数：用户传入的 options 覆盖配置文件默认值
         const ollamaOptions = buildOllamaOptions(model, userOptions || {});
-
+        console.info('Web messages:', messages);
+        console.info('Web think:', think);
+        console.info('Ollama options:', ollamaOptions);
         const response = await axios.post(
           `${OLLAMA_API}/chat`,
           {
             model,
             messages,
+            think,
             stream: true,
             ...ollamaOptions,
           },

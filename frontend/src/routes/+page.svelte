@@ -76,6 +76,7 @@
           message,
           model: $selectedModel,
           sessionId: $currentSession?.id,
+          think: false, // 目前不启用 think 模式
           options,
         }),
       });
