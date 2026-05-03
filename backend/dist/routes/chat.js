@@ -2,13 +2,14 @@ import { Hono } from 'hono';
 import { stream } from 'hono/streaming';
 import axios from 'axios';
 import { SessionService } from '../services/sessionService';
+import { MemoryService } from '../services/memoryService';
 import { OLLAMA_API, buildOllamaOptions } from '../config';
 const chat = new Hono();
 // POST /api/chat - 带会话的生成回复
 chat.post('/', async (c) => {
     try {
         const body = await c.req.json();
-        const { message, model, sessionId, options: userOptions } = body;
+        const { message, model, sessionId, think = false, options: userOptions } = body;
         if (!message || !model) {
             return c.json({ error: 'message and model are required' }, { status: 400 });
         }
@@ -19,11 +20,15 @@ chat.post('/', async (c) => {
             if (!session) {
                 return c.json({ error: 'Session not found' }, { status: 404 });
             }
-            // 保存用户消息
-            SessionService.addMessage(sessionId, 'user', message);
-            // 构建消息历史
-            const history = SessionService.getRecentMessages(sessionId, 10);
-            messages.push(...history.map(m => ({ role: m.role, content: m.content })));
+            // 保存用户消息（使用 MemoryService）
+            MemoryService.addMessage(sessionId, 'user', message);
+            // 检查是否需要压缩
+            if (MemoryService.shouldCompress(sessionId)) {
+                await MemoryService.compressSession(sessionId);
+            }
+            // 获取上下文消息
+            const context = MemoryService.getContextMessages(sessionId);
+            messages = context.map(m => ({ role: m.role, content: m.content }));
         }
         else {
             messages.push({ role: 'user', content: message });
@@ -35,9 +40,13 @@ chat.post('/', async (c) => {
             try {
                 // 构建 Ollama 参数：用户传入的 options 覆盖配置文件默认值
                 const ollamaOptions = buildOllamaOptions(model, userOptions || {});
+                console.info('Web messages:', messages);
+                console.info('Web think:', think);
+                console.info('Ollama options:', ollamaOptions);
                 const response = await axios.post(`${OLLAMA_API}/chat`, {
                     model,
                     messages,
+                    think,
                     stream: true,
                     ...ollamaOptions,
                 }, { responseType: 'stream' });
@@ -70,9 +79,9 @@ chat.post('/', async (c) => {
                         reject(error);
                     });
                 });
-                // 保存 AI 回复
+                // 保存 AI 回复（使用 MemoryService）
                 if (sessionId && fullResponse) {
-                    SessionService.addMessage(sessionId, 'assistant', fullResponse);
+                    MemoryService.addMessage(sessionId, 'assistant', fullResponse);
                 }
                 await writer.write(new TextEncoder().encode('\n'));
             }

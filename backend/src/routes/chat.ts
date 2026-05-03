@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { stream } from 'hono/streaming';
 import axios from 'axios';
 import { SessionService } from '../services/sessionService';
+import { MemoryService } from '../services/memoryService';
 import { OLLAMA_API, buildOllamaOptions } from '../config';
 
 const chat = new Hono();
@@ -28,12 +29,15 @@ chat.post('/', async (c) => {
         return c.json({ error: 'Session not found' }, { status: 404 });
       }
       
-      // 保存用户消息
-      SessionService.addMessage(sessionId, 'user', message);
+      // 获取上下文消息（传入当前消息以计算token限制）
+      const context = MemoryService.getContextMessages(sessionId, { role: 'user', content: message });
+      messages = context.map(m => ({ role: m.role, content: m.content }));
       
-      // 构建消息历史
-      const history = SessionService.getRecentMessages(sessionId, 10);
-      messages.push(...history.map(m => ({ role: m.role, content: m.content })));
+      // 添加当前用户消息
+      messages.push({ role: 'user', content: message });
+      
+      // 保存用户消息
+      MemoryService.addMessage(sessionId, 'user', message);
     } else {
       messages.push({ role: 'user', content: message });
     }
@@ -46,9 +50,9 @@ chat.post('/', async (c) => {
       try {
         // 构建 Ollama 参数：用户传入的 options 覆盖配置文件默认值
         const ollamaOptions = buildOllamaOptions(model, userOptions || {});
-        console.info('Web messages:', messages);
-        console.info('Web think:', think);
-        console.info('Ollama options:', ollamaOptions);
+        
+        console.info('Ollama messages:', messages);
+
         const response = await axios.post(
           `${OLLAMA_API}/chat`,
           {
@@ -92,12 +96,23 @@ chat.post('/', async (c) => {
           });
         });
 
-        // 保存 AI 回复
+        // 保存 AI 回复（使用 MemoryService）
         if (sessionId && fullResponse) {
-          SessionService.addMessage(sessionId, 'assistant', fullResponse);
+          MemoryService.addMessage(sessionId, 'assistant', fullResponse);
         }
 
         await writer.write(new TextEncoder().encode('\n'));
+        
+        // 流结束后异步检查是否需要压缩（延迟执行，避免阻塞）
+        if (sessionId) {
+          setImmediate(() => {
+            if (MemoryService.shouldCompress(sessionId)) {
+              MemoryService.compressSession(sessionId).catch(err => {
+                console.error('Compression failed:', err);
+              });
+            }
+          });
+        }
       } catch (error) {
         console.error('Request error:', error);
         await writer.write(new TextEncoder().encode(
