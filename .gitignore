@@ -12,3 +12,5 @@ vite.config.ts.timestamp-*
 /.vscode
 
 backend/node_modules/
+
+__pycache__/
