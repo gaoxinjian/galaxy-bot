@@ -3,7 +3,7 @@ import { stream } from 'hono/streaming';
 import axios from 'axios';
 import { SessionService } from '../services/sessionService';
 import { MemoryService } from '../services/memoryService';
-import { OLLAMA_API, buildOllamaOptions } from '../config';
+import { /* OLLAMA_API, */ MLX_API,  buildOllamaOptions } from '../config';
 
 const chat = new Hono();
 
@@ -51,10 +51,11 @@ chat.post('/', async (c) => {
         // 构建 Ollama 参数：用户传入的 options 覆盖配置文件默认值
         const ollamaOptions = buildOllamaOptions(model, userOptions || {});
         
-        console.info('Ollama messages:', messages);
+        console.info('MLX_API messages:', messages);
 
         const response = await axios.post(
-          `${OLLAMA_API}/chat`,
+          // `${OLLAMA_API}/chat`,
+          `${MLX_API}/v1/chat/completions`,
           {
             model,
             messages,
@@ -70,14 +71,31 @@ chat.post('/', async (c) => {
             try {
               const lines = chunk.toString().split('\n');
               for (const line of lines) {
-                if (line.trim()) {
-                  const json = JSON.parse(line);
-                  if (json.message?.content) {
-                    fullResponse += json.message.content;
-                    await writer.write(new TextEncoder().encode(json.message.content));
-                  }
-                  if (json.done) {
+                const trimmed = line.trim();
+                if (!trimmed) continue;
+                
+                // OpenAI SSE format: data: {...}
+                if (trimmed.startsWith('data: ')) {
+                  const dataStr = trimmed.slice(6); // remove 'data: '
+                  
+                  // End marker
+                  if (dataStr === '[DONE]') {
                     resolve();
+                    return;
+                  }
+                  
+                  const json = JSON.parse(dataStr);
+                  const content = json.choices?.[0]?.delta?.content;
+                  const finishReason = json.choices?.[0]?.finish_reason;
+                  
+                  if (content) {
+                    fullResponse += content;
+                    await writer.write(new TextEncoder().encode(content));
+                  }
+                  
+                  if (finishReason === 'stop' || finishReason === 'length') {
+                    resolve();
+                    return;
                   }
                 }
               }

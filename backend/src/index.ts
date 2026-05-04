@@ -19,12 +19,13 @@ app.use('*', cors({
 // GET /api/models - 获取可用模型（包含完整参数配置）
 app.get('/api/models', async (c) => {
   try {
-    const response = await axios.get(`${process.env.OLLAMA_API || 'http://localhost:11434/api'}/tags`);
-    const models = response.data.models || [];
+    const response = await axios.get(`${process.env.MLX_API || 'http://localhost:8830'}/api/modellist`);
+    console.info('MLX_API models response:', response.data);
+    const models = response.data || [];
 
     return c.json({
       models: models.map((m: any) => {
-        const modelName = m.name;
+        const modelName = m;
         const parameters = getModelParameters(modelName);
 
         return {

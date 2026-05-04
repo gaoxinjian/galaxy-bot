@@ -75,7 +75,7 @@ export function getModelParameters(modelName: string): Record<string, ParameterD
  * 获取模型的显示名称
  */
 export function getModelDisplayName(modelName: string): string {
-  return config.models[modelName]?.displayName || modelName;
+  return modelName.includes('/') ? modelName.split('/')[1] : modelName;
 }
 
 /**
