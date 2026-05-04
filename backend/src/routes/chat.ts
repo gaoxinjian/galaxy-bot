@@ -3,7 +3,7 @@ import { stream } from 'hono/streaming';
 import axios from 'axios';
 import { SessionService } from '../services/sessionService';
 import { MemoryService } from '../services/memoryService';
-import { /* OLLAMA_API, */ MLX_API,  buildOllamaOptions } from '../config';
+import { MLX_API,  buildMlxOptions } from '../config';
 
 const chat = new Hono();
 
@@ -24,18 +24,14 @@ chat.post('/', async (c) => {
     let messages: Array<{ role: string; content: string }> = [];
     let sessionParameters = {};
 
-    console.log('[DEBUG] sessionId:', sessionId);
-
     if (sessionId) {
       const session = SessionService.getSession(sessionId);
-      console.log('[DEBUG] session found:', !!session);
       if (!session) {
         return c.json({ error: 'Session not found' }, { status: 404 });
       }
 
       // 获取会话级别的参数覆盖
       sessionParameters = SessionService.getParameters(sessionId);
-      console.log('[DEBUG] sessionParameters from service:', sessionParameters);
 
       // 获取上下文消息（传入当前消息以计算token限制）
       const context = MemoryService.getContextMessages(sessionId, { role: 'user', content: message });
@@ -50,34 +46,30 @@ chat.post('/', async (c) => {
       messages.push({ role: 'user', content: message });
     }
 
-    // 流式调用 Ollama
+    // 流式调用 MLX
     c.header('Content-Type', 'text/plain; charset=utf-8');
     return stream(c, async (writer) => {
       let fullResponse = '';
 
       try {
         // 构建参数：模型默认 ← 会话参数 ← 用户传入（优先级递增）
-        console.log('[DEBUG] sessionParameters:', sessionParameters);
-        console.log('[DEBUG] userOptions:', userOptions);
         const mergedOptions = {
           ...sessionParameters,
           ...userOptions
         };
-        console.log('[DEBUG] mergedOptions:', mergedOptions);
-        const ollamaOptions = buildOllamaOptions(model, mergedOptions);
-        console.log('[DEBUG] ollamaOptions:', ollamaOptions);
+        const mlxOptions = buildMlxOptions(model, mergedOptions);
         
-        console.info('MLX_API messages:', messages);
-
+        // 从 mlxOptions 中移除 think，使用前端传入的 think 值
+        const { think: _, ...optionsWithoutThink } = mlxOptions;
+        
         const response = await axios.post(
-          // `${OLLAMA_API}/chat`,
           `${MLX_API}/v1/chat/completions`,
           {
             model,
             messages,
-            think,
             stream: true,
-            ...ollamaOptions,
+            ...optionsWithoutThink,
+            think,  // 使用前端传入的 think，优先级最高
           },
           { responseType: 'stream' }
         );

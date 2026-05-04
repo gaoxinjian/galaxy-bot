@@ -86,9 +86,9 @@ export function hasModelConfig(modelName: string): boolean {
 }
 
 /**
- * 构建传递给 Ollama 的 options 对象
+ * 构建传递给 MLX 的 options 对象
  */
-export function buildOllamaOptions(
+export function buildMlxOptions(
   modelName: string,
   userOverrides: Record<string, number> = {}
 ): Record<string, number> {

@@ -38,34 +38,23 @@ sessions.post('/', async (c) => {
 
 // PATCH /api/sessions/:id/parameters - 更新会话参数（必须放在 /:id 之前）
 sessions.patch('/:id/parameters', async (c) => {
-  console.log('[DEBUG] PATCH /:id/parameters called');
-  console.log('[DEBUG] params:', c.req.param());
   try {
     const id = c.req.param('id');
-    console.log('[DEBUG] session id:', id);
-    
     const body = await c.req.json();
-    console.log('[DEBUG] request body:', body);
-    
     const { parameters } = body;
 
     if (!parameters || typeof parameters !== 'object') {
-      console.log('[DEBUG] parameters validation failed');
       return c.json({ error: 'parameters is required' }, { status: 400 });
     }
 
     const session = SessionService.getSession(id);
-    console.log('[DEBUG] session found:', !!session);
-    
     if (!session) {
       return c.json({ error: 'Session not found' }, { status: 404 });
     }
 
     SessionService.updateParameters(id, parameters);
-    console.log('[DEBUG] parameters updated successfully');
     return c.json({ success: true });
   } catch (error) {
-    console.error('[DEBUG] error:', error);
     return c.json(
       { error: error instanceof Error ? error.message : 'Failed to update session parameters' },
       { status: 500 }

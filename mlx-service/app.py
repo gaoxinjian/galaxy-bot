@@ -26,7 +26,7 @@ class ChatCompletionRequest(BaseModel):
     temperature: float = 0.7
     top_p: float = 0.9
     top_k: int = 40
-    max_tokens: int = 512
+    max_tokens: int = 2048
 
     stream: bool = False
 
@@ -177,6 +177,7 @@ def stream_chat(model, tokenizer, prompt, req, request_id):
 
 @app.post("/v1/chat/completions")
 def chat_completions(req: ChatCompletionRequest):
+    print(f'[DEBUG] Python received think: {req.think}')
     try:
         model, tokenizer = get_model(req.model)
         request_id = f"chatcmpl-{uuid.uuid4().hex[:24]}"

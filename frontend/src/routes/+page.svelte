@@ -13,7 +13,8 @@
   import {
     fetchModels,
     models as modelsStore,
-    selectedModel
+    selectedModel,
+    paramValues
   } from '$lib/modelStore';
   import type { Model } from '$lib/types';
 
@@ -63,6 +64,9 @@
     }]);
 
     try {
+      // 获取当前模型的 think 配置 (0=false, 1=true)
+      const thinkValue = $paramValues['think'] ?? 1;
+      
       const response = await fetch('http://localhost:3001/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -70,7 +74,7 @@
           message,
           model: $selectedModel,
           sessionId: $currentSession?.id,
-          think: false, // 目前不启用 think 模式
+          think: thinkValue === 1, // 转换为 boolean
           // 不传 options，让后端使用会话参数
         }),
       });
