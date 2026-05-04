@@ -39,6 +39,7 @@ export interface Session {
   id: string;
   title: string;
   model: string;
+  parameters?: string;  // JSON 字符串
   created_at: string;
   updated_at: string;
 }

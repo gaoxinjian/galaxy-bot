@@ -29,17 +29,18 @@ class ChatCompletionRequest(BaseModel):
     max_tokens: int = 512
 
     stream: bool = False
-    stop: list[str] | None = None
 
-    system_prompt: str | None = None   # 👈 新增
+    system_prompt: str | None = None
+    think: bool = True  # True = 启用 thinking，False = 禁用
 
-def build_prompt(tokenizer, messages, system_prompt=None):
+def build_prompt(tokenizer, messages, system_prompt=None, think=True):
     msgs = inject_system_prompt(messages, system_prompt)
 
     return tokenizer.apply_chat_template(
         msgs,
         tokenize=False,
-        add_generation_prompt=True
+        add_generation_prompt=True,
+        enable_thinking=think  # 控制是否启用 thinking
     )
 
 def build_sampler(req: ChatCompletionRequest):
@@ -81,12 +82,6 @@ def normal_chat(model, tokenizer, prompt, req, request_id):
 
     output = result["text"]
 
-    # stop 截断
-    if req.stop:
-        for stop_word in req.stop:
-            if stop_word in output:
-                output = output.split(stop_word)[0]
-
     prompt_tokens = result["prompt_tokens"]
     completion_tokens = result["generation_tokens"]
 
@@ -125,58 +120,23 @@ def stream_chat(model, tokenizer, prompt, req, request_id):
     def generator():
         buffer = ""
         last_response = None
-        sent_len = 0   # 防重复输出
 
         for response in stream_generate(
-            model, 
-            tokenizer, 
-            prompt, 
-            max_tokens=req.max_tokens, 
+            model,
+            tokenizer,
+            prompt,
+            max_tokens=req.max_tokens,
             sampler=sampler
         ):
             last_response = response
 
             text = response.text
+            
+            # 跳过空内容
+            if not text:
+                continue
+                
             buffer += text
-
-            # stop 检测
-            if req.stop:
-                for stop_word in req.stop:
-                    if stop_word in buffer:
-                        final = buffer.split(stop_word)[0]
-                        new_part = final[sent_len:]
-
-                        if new_part:
-                            yield f"data: {json.dumps({
-                                'id': request_id,
-                                'object': 'chat.completion.chunk',
-                                'choices': [{
-                                    'delta': {'content': new_part},
-                                    'index': 0,
-                                    'finish_reason': None
-                                }]
-                            }, ensure_ascii=False)}\n\n"
-
-                        # usage
-                        usage = {
-                            "prompt_tokens": last_response.prompt_tokens,
-                            "completion_tokens": last_response.generation_tokens,
-                            "total_tokens": last_response.prompt_tokens + last_response.generation_tokens
-                        }
-
-                        yield f"data: {json.dumps({
-                            'id': request_id,
-                            'object': 'chat.completion.chunk',
-                            'choices': [{
-                                'delta': {},
-                                'index': 0,
-                                'finish_reason': 'stop'
-                            }],
-                            'usage': usage
-                        }, ensure_ascii=False)}\n\n"
-
-                        yield "data: [DONE]\n\n"
-                        return
 
             # 正常输出
             yield f"data: {json.dumps({
@@ -189,7 +149,6 @@ def stream_chat(model, tokenizer, prompt, req, request_id):
                 }]
             }, ensure_ascii=False)}\n\n"
 
-            sent_len = len(buffer)
 
         if last_response:
             usage = {
@@ -235,7 +194,8 @@ def chat_completions(req: ChatCompletionRequest):
     prompt = build_prompt(
         tokenizer,
         req.messages,
-        system_prompt=req.system_prompt
+        system_prompt=req.system_prompt,
+        think=req.think
     )
 
     if req.stream:

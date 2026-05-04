@@ -8,8 +8,11 @@
     loadSession, 
     deleteSession,
     updateSessionTitle,
+    updateSessionParameters,
     type Session 
   } from '$lib/sessionStore';
+  import SessionConfigModal from './SessionConfigModal.svelte';
+  import { tick } from 'svelte';
 
   // 自动聚焦动作
   function focusOnMount(node: HTMLInputElement) {
@@ -23,6 +26,9 @@
   let editingTitle = $state('');
   let isCreating = $state(false);
   let newSessionTitle = $state('');
+  let configSessionId: string | null = $state(null);
+  let isConfigModalOpen = $state(false);
+  let configInitialParams = $state<Record<string, number>>({});
 
   onMount(() => {
     fetchSessions();
@@ -66,6 +72,23 @@
   function formatDate(dateStr: string): string {
     const date = new Date(dateStr);
     return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+  }
+
+  function openConfigModal(session: Session) {
+    configSessionId = session.id;
+    // 如果有已保存的参数，使用它们
+    try {
+      configInitialParams = session.parameters ? JSON.parse(session.parameters) : {};
+    } catch {
+      configInitialParams = {};
+    }
+    isConfigModalOpen = true;
+  }
+
+  async function handleSaveConfig(params: Record<string, number>) {
+    if (configSessionId) {
+      await updateSessionParameters(configSessionId, params);
+    }
   }
 </script>
 
@@ -128,7 +151,15 @@
     </div>
   {/if}
 
-  <!-- 会话列表 -->
+  <!-- 会话配置弹窗 -->
+<SessionConfigModal
+  isOpen={isConfigModalOpen}
+  onClose={() => isConfigModalOpen = false}
+  onSave={handleSaveConfig}
+  initialParams={configInitialParams}
+/>
+
+<!-- 会话列表 -->
   <div class="flex-1 overflow-y-auto p-2">
     {#if $sessions.length === 0}
       <div class="p-4 text-gray-500 text-center text-sm">
@@ -171,6 +202,17 @@
 
             <!-- 操作按钮 -->
             <div class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                onclick={(e) => { e.stopPropagation(); openConfigModal(session); }}
+                class="p-1.5 text-gray-400 hover:text-purple-400 hover:bg-purple-500/10 rounded-lg transition-colors"
+                title="会话设置"
+                aria-label="会话设置"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+              </button>
               <button
                 onclick={(e) => { e.stopPropagation(); startEditing(session); }}
                 class="p-1.5 text-gray-400 hover:text-cyan-400 hover:bg-cyan-500/10 rounded-lg transition-colors"

@@ -12,7 +12,7 @@ const app = new Hono();
 app.use('*', cors({
   origin: '*',
   allowHeaders: ['Content-Type'],
-  allowMethods: ['GET', 'POST', 'OPTIONS', 'OPTIONS'],
+  allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   credentials: false,
 }));
 

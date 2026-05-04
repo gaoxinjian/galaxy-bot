@@ -67,6 +67,17 @@ export async function updateSessionTitle(sessionId: string, title: string): Prom
   await fetchSessions(); // 刷新列表
 }
 
+// 更新会话参数
+export async function updateSessionParameters(sessionId: string, parameters: Record<string, number>): Promise<void> {
+  const response = await fetch(`${API_BASE}/api/sessions/${sessionId}/parameters`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ parameters }),
+  });
+  if (!response.ok) throw new Error('Failed to update session parameters');
+  await fetchSessions(); // 刷新列表
+}
+
 // 清空会话消息
 export async function clearSessionMessages(sessionId: string): Promise<void> {
   const response = await fetch(`${API_BASE}/api/sessions/${sessionId}/messages`, {
