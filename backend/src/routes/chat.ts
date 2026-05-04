@@ -22,20 +22,28 @@ chat.post('/', async (c) => {
 
     // 验证会话是否存在
     let messages: Array<{ role: string; content: string }> = [];
-    
+    let sessionParameters = {};
+
+    console.log('[DEBUG] sessionId:', sessionId);
+
     if (sessionId) {
       const session = SessionService.getSession(sessionId);
+      console.log('[DEBUG] session found:', !!session);
       if (!session) {
         return c.json({ error: 'Session not found' }, { status: 404 });
       }
-      
+
+      // 获取会话级别的参数覆盖
+      sessionParameters = SessionService.getParameters(sessionId);
+      console.log('[DEBUG] sessionParameters from service:', sessionParameters);
+
       // 获取上下文消息（传入当前消息以计算token限制）
       const context = MemoryService.getContextMessages(sessionId, { role: 'user', content: message });
       messages = context.map(m => ({ role: m.role, content: m.content }));
-      
+
       // 添加当前用户消息
       messages.push({ role: 'user', content: message });
-      
+
       // 保存用户消息
       MemoryService.addMessage(sessionId, 'user', message);
     } else {
@@ -48,8 +56,16 @@ chat.post('/', async (c) => {
       let fullResponse = '';
 
       try {
-        // 构建 Ollama 参数：用户传入的 options 覆盖配置文件默认值
-        const ollamaOptions = buildOllamaOptions(model, userOptions || {});
+        // 构建参数：模型默认 ← 会话参数 ← 用户传入（优先级递增）
+        console.log('[DEBUG] sessionParameters:', sessionParameters);
+        console.log('[DEBUG] userOptions:', userOptions);
+        const mergedOptions = {
+          ...sessionParameters,
+          ...userOptions
+        };
+        console.log('[DEBUG] mergedOptions:', mergedOptions);
+        const ollamaOptions = buildOllamaOptions(model, mergedOptions);
+        console.log('[DEBUG] ollamaOptions:', ollamaOptions);
         
         console.info('MLX_API messages:', messages);
 

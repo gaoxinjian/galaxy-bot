@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS sessions (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
     model TEXT NOT NULL DEFAULT 'qwen:9b',
+    parameters TEXT,  -- JSON 格式存储会话级别的参数覆盖
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );

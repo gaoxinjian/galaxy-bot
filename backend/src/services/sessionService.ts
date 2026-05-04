@@ -4,8 +4,18 @@ export interface Session {
   id: string;
   title: string;
   model: string;
+  parameters?: string;  // JSON 字符串
   created_at: string;
   updated_at: string;
+}
+
+// 会话参数类型
+export interface SessionParameters {
+  temperature?: number;
+  top_p?: number;
+  top_k?: number;
+  max_tokens?: number;
+  [key: string]: number | undefined;
 }
 
 export interface Message {
@@ -47,6 +57,27 @@ export class SessionService {
       'UPDATE sessions SET title = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
     );
     stmt.run(title, id);
+  }
+
+  // 更新会话参数
+  static updateParameters(id: string, parameters: SessionParameters): void {
+    const stmt = db.prepare(
+      'UPDATE sessions SET parameters = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+    );
+    stmt.run(JSON.stringify(parameters), id);
+  }
+
+  // 获取会话参数（解析 JSON）
+  static getParameters(id: string): SessionParameters {
+    const session = this.getSession(id);
+    if (!session || !session.parameters) {
+      return {};
+    }
+    try {
+      return JSON.parse(session.parameters) as SessionParameters;
+    } catch {
+      return {};
+    }
   }
 
   // 删除会话

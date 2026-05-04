@@ -13,9 +13,7 @@
   import {
     fetchModels,
     models as modelsStore,
-    selectedModel,
-    paramValues,
-    getCurrentParamValues
+    selectedModel
   } from '$lib/modelStore';
   import type { Model } from '$lib/types';
 
@@ -65,10 +63,6 @@
     }]);
 
     try {
-      // 获取当前模型和参数值
-      const currentModel = models.find(m => m.name === $selectedModel);
-      const options = getCurrentParamValues(currentModel, $paramValues);
-
       const response = await fetch('http://localhost:3001/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -77,7 +71,7 @@
           model: $selectedModel,
           sessionId: $currentSession?.id,
           think: false, // 目前不启用 think 模式
-          options,
+          // 不传 options，让后端使用会话参数
         }),
       });
 
