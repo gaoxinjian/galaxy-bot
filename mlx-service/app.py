@@ -2,24 +2,66 @@
 
 from fastapi import FastAPI
 from pydantic import BaseModel
-from models import get_model, scan_models, model_manager
+from models import get_model, scan_models
 from fastapi.responses import StreamingResponse
 from mlx_lm.sample_utils import make_sampler
 from mlx_lm import generate, stream_generate
-import json, time, uuid
+import json, time, uuid, logging, asyncio
 from fastapi import HTTPException
+from typing import Union, List
+from pydantic import BaseModel, model_validator
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 
-DEFAULT_SYSTEM_PROMPT = "你是一个专业、简洁的AI助手，请直接给出答案，不要输出思考过程。"
+logging.basicConfig(level=logging.INFO)
+DEFAULT_SYSTEM_PROMPT = "role: assistant"
 
 app = FastAPI()
 
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request, exc):
+    # 打印详细的验证错误
+    print("\n" + "="*50)
+    print("请求验证失败 (422):")
+    print("错误详情:", exc.errors())
+    # 尝试读取原始请求体
+    try:
+        body = await request.body()
+        print("原始请求体:", body.decode())
+    except:
+        print("无法读取请求体")
+    print("="*50 + "\n")
+    # 返回标准错误响应（可以保持原有格式）
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors()},
+    )
+
+class ContentPart(BaseModel):
+    type: str
+    text: str | None = None
+    # 可以按需扩展 image_url 等字段
+
 class ChatMessage(BaseModel):
     role: str
-    content: str
+    content: Union[str, List[ContentPart]]
+
+    @model_validator(mode='after')
+    def extract_text_content(self):
+        """将 content 中的文本部分提取为字符串，方便后续使用"""
+        if isinstance(self.content, str):
+            return self  # 已经是字符串，无需处理
+        # 处理数组格式：提取所有 type="text" 的 text 内容
+        texts = []
+        for part in self.content:
+            if part.type == "text" and part.text:
+                texts.append(part.text)
+        # 将提取后的文本保存回 content
+        self.content = "\n".join(texts)
+        return self
 
 class ChatCompletionRequest(BaseModel):
     conversation_id: str | None = None
-
     model: str
     messages: list[ChatMessage]
 
@@ -29,9 +71,11 @@ class ChatCompletionRequest(BaseModel):
     max_tokens: int = 2048
 
     stream: bool = False
-
     system_prompt: str | None = None
-    think: bool = True  # True = 启用 thinking，False = 禁用
+    think: bool = True 
+    class Config:
+        extra = "ignore" 
+
 
 def build_prompt(tokenizer, messages, system_prompt=None, think=True):
     msgs = inject_system_prompt(messages, system_prompt)
@@ -40,8 +84,9 @@ def build_prompt(tokenizer, messages, system_prompt=None, think=True):
         msgs,
         tokenize=False,
         add_generation_prompt=True,
-        enable_thinking=think  # 控制是否启用 thinking
+        enable_thinking=think
     )
+
 
 def build_sampler(req: ChatCompletionRequest):
     return make_sampler(
@@ -50,9 +95,9 @@ def build_sampler(req: ChatCompletionRequest):
         top_k=req.top_k,
     )
 
+
 def inject_system_prompt(messages, system_prompt=None):
     msgs = [m.dict() for m in messages]
-
     has_system = any(m["role"] == "system" for m in msgs)
 
     if system_prompt:
@@ -68,23 +113,24 @@ def inject_system_prompt(messages, system_prompt=None):
 
     return msgs
 
+
 def normal_chat(model, tokenizer, prompt, req, request_id):
     sampler = build_sampler(req)
 
-    result = generate(
+    # 计算输入 token 数
+    prompt_tokens = len(tokenizer.encode(prompt))
+
+    # 生成回复（返回纯字符串）
+    output = generate(
         model,
         tokenizer,
         prompt=prompt,
         sampler=sampler,
-        max_tokens=req.max_tokens,
-        return_dict=True
+        max_tokens=req.max_tokens
     )
 
-    output = result["text"]
-
-    prompt_tokens = result["prompt_tokens"]
-    completion_tokens = result["generation_tokens"]
-
+    # 计算输出 token 数
+    completion_tokens = len(tokenizer.encode(output))
     finish_reason = "stop"
     if completion_tokens >= req.max_tokens:
         finish_reason = "length"
@@ -114,7 +160,7 @@ def normal_chat(model, tokenizer, prompt, req, request_id):
 
 def stream_chat(model, tokenizer, prompt, req, request_id):
     sampler = build_sampler(req)
-    conv_id = req.conversation_id
+    # conv_id = req.conversation_id
 
 
     def generator():
@@ -177,7 +223,6 @@ def stream_chat(model, tokenizer, prompt, req, request_id):
 
 @app.post("/v1/chat/completions")
 def chat_completions(req: ChatCompletionRequest):
-    print(f'[DEBUG] Python received think: {req.think}')
     try:
         model, tokenizer = get_model(req.model)
         request_id = f"chatcmpl-{uuid.uuid4().hex[:24]}"
@@ -191,6 +236,10 @@ def chat_completions(req: ChatCompletionRequest):
                 }
             }
         )
+    
+    # logging.info(f"{req}")
+    # 只能给openclaw单独一个模型来写死think=false
+    # req.think = False
 
     prompt = build_prompt(
         tokenizer,
@@ -207,14 +256,11 @@ def chat_completions(req: ChatCompletionRequest):
 
 @app.get("/api/modellist")
 async def list_models():
-    """
-    返回与 Ollama 格式兼容的模型列表。
-    Node 层无需改变解析逻辑。
-    """
+    # return model list
     scanned = scan_models()
     if scanned:
         return scanned
-    # fallback 手动列表（建议保持更新，以防自动扫描失效）
+    # fallback static list
     return [
         "mlx-community/Qwen3.5-9B-MLX-4bit"
     ]
