@@ -26,7 +26,7 @@ sessions.post('/', async (c) => {
       return c.json({ error: 'title is required' }, { status: 400 });
     }
 
-    const session = SessionService.createSession(title, model || 'qwen:9b');
+    const session = SessionService.createSession(title, model || 'mlx-community/Qwen3.5-9B-MLX-4bit');
     return c.json({ session }, { status: 201 });
   } catch (error) {
     return c.json(

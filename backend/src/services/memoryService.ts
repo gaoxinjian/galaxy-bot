@@ -93,19 +93,19 @@ export class MemoryService {
     return { keepMessages, compressMessages };
   }
 
-  // 生成摘要（调用Ollama）
+  // 生成摘要（调用mlx）
   static async generateSummary(messages: Array<{ role: string; content: string }>): Promise<string> {
     const prompt = `请将以下对话内容总结为简洁的摘要，保留关键信息，去除冗余细节：\n\n${messages.map(m => `${m.role}: ${m.content}`).join('\n')}\n\n请用一段话总结主要内容：`;
 
     const axios = (await import('axios')).default;
-    const { /* OLLAMA_API, */ MLX_API, buildOllamaOptions } = await import('../config');
+    const { MLX_API, buildMlxOptions } = await import('../config');
 
     const response = await axios.post(`${MLX_API}/v1/chat/completions`, {
-      model: 'qwen3.5:9b',
+      model: 'mlx-community/Qwen3.5-9B-MLX-4bit',
       prompt,
       stream: false,
       think: false,
-      ...buildOllamaOptions('qwen3.5:9b', {})
+      ...buildMlxOptions('mlx-community/Qwen3.5-9B-MLX-4bit', {})
     });
 
     return response.data.response?.trim() || '';
