@@ -31,11 +31,19 @@
       const data = await response.json();
       
       if (data.models && data.models.length > 0) {
-        commonParams = data.models[0].config.parameters;
+        // 过滤掉 think 参数（模型层配置，不在会话层配置）
+        const allParams = data.models[0].config.parameters;
+        const filteredParams: Record<string, ParameterDef> = {};
+        for (const [key, param] of Object.entries(allParams)) {
+          if (key !== 'think') {
+            filteredParams[key] = param;
+          }
+        }
+        commonParams = filteredParams;
         
         // 初始化本地值
         const defaults: Record<string, number> = {};
-        for (const [key, param] of Object.entries(commonParams)) {
+        for (const [key, param] of Object.entries(filteredParams)) {
           defaults[key] = initialParams[key] ?? (param.default as number);
         }
         localValues = defaults;
