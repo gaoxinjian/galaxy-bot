@@ -14,3 +14,4 @@ vite.config.ts.timestamp-*
 backend/node_modules/
 
 __pycache__/
+**/chat.db
