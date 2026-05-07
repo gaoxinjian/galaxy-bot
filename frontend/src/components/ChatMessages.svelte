@@ -11,21 +11,32 @@
   let { messages, isLoading = false, emptyState = false }: Props = $props();
 
   let messagesContainer: HTMLDivElement;
+  let scrollFrameId: number;
 
-  // 自动滚动到底部
+  // 使用 requestAnimationFrame 防止掉帧
   $effect(() => {
     if (messagesContainer && messages.length > 0) {
-      setTimeout(() => {
+      // 取消上一帧的滚动请求
+      if (scrollFrameId) cancelAnimationFrame(scrollFrameId);
+      
+      scrollFrameId = requestAnimationFrame(() => {
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
-      }, 0);
+      });
     }
+  });
+
+  // 清理
+  $effect(() => {
+    return () => {
+      if (scrollFrameId) cancelAnimationFrame(scrollFrameId);
+    };
   });
 </script>
 
 <div
   bind:this={messagesContainer}
   class="flex-1 overflow-y-auto p-6 space-y-4"
-  style="transform: translateZ(0); will-change: scroll-position;"
+  style="transform: translateZ(0); will-change: scroll-position; contain: layout style paint;"
 >
   {#if emptyState}
     <div class="flex flex-col items-center justify-center h-full text-center">
