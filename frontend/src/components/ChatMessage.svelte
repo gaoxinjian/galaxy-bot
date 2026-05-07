@@ -27,7 +27,7 @@
 
     <!-- 消息气泡 -->
     <div
-      class="px-5 py-3 rounded-2xl backdrop-blur-sm {isUser
+      class="px-5 py-3 rounded-2xl {isUser
         ? 'bg-gradient-to-r from-cyan-600/80 to-blue-600/80 text-white rounded-br-md border border-cyan-400/30'
         : 'bg-black/40 text-gray-100 rounded-bl-md border border-purple-500/30'}"
     >
