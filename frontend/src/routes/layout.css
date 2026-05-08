@@ -50,6 +50,7 @@ body {
 .glass-card {
   background: var(--cyber-card);
   background-color: rgba(20, 20, 40, .85);
+  backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
   border: 1px solid var(--cyber-border);
   border-radius: 12px;
