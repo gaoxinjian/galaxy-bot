@@ -80,6 +80,8 @@ npm run dev
 ### Phase 8: 记忆处理优化
 - [ ] 对于返回的消息携带think的部分，把think和正文分开存储，记忆布需要think部分
 
+### Phase 9: 语音输入
+
 ## 已完成
 
 - [x] 流式对话
