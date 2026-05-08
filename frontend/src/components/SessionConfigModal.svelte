@@ -32,11 +32,11 @@
       
       if (data.models && data.models.length > 0) {
         // 过滤掉 think 参数（模型层配置，不在会话层配置）
-        const allParams = data.models[0].config.parameters;
+        const allParams = data.models[0].config.parameters as Record<string, ParameterDef>;
         const filteredParams: Record<string, ParameterDef> = {};
         for (const [key, param] of Object.entries(allParams)) {
           if (key !== 'think') {
-            filteredParams[key] = param;
+            filteredParams[key] = param as ParameterDef;
           }
         }
         commonParams = filteredParams;
@@ -99,13 +99,20 @@
   <div 
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
     onclick={handleBackdropClick}
+    onkeydown={e => {
+      if (e.key === 'Enter' || e.key === '') {
+        e.stopPropagation();
+        e.preventDefault();
+        handleBackdropClick(e as unknown as MouseEvent);
+      }
+    }}
     role="dialog"
     aria-modal="true"
     aria-labelledby="session-config-title"
+    tabindex="-1"
   >
     <div 
       class="glass-card w-full max-w-lg mx-4 max-h-[80vh] flex flex-col neon-glow"
-      onclick={stopPropagation}
     >
       <!-- 头部 -->
       <div class="flex items-center justify-between p-6 border-b border-cyan-500/20">

@@ -39,10 +39,16 @@
     role="dialog"
     aria-modal="true"
     aria-labelledby="modal-title"
+    tabindex="-1"
+    onkeydown={e => {
+      if (e.key === 'Enter' || e.key === '') {
+        e.preventDefault();
+        handleBackdropClick(e as unknown as MouseEvent);
+      }
+    }}
   >
     <div 
       class="glass-card w-full max-w-lg mx-4 max-h-[80vh] flex flex-col neon-glow"
-      onclick={stopPropagation}
     >
       <!-- 头部 -->
       <div class="flex items-center justify-between p-6 border-b border-cyan-500/20">
