@@ -101,14 +101,14 @@ else
 fi
 
 # 等待 MLX 启动
-sleep 3
+sleep 1
 
 # 启动 Backend
 echo -e "${YELLOW}启动 Backend (端口 3001)...${NC}"
 run_in_terminal "Backend" "cd backend && npm run dev" "$terminal_type"
 
 # 等待 Backend 启动
-sleep 2
+sleep 1
 
 # 启动 Frontend
 echo -e "${YELLOW}启动 Frontend (端口 5173)...${NC}"
@@ -118,7 +118,7 @@ run_in_terminal "Frontend" "cd frontend && npm run dev" "$terminal_type"
 save_pids
 
 # 等待所有服务启动
-sleep 3
+sleep 1
 
 echo -e "\n${GREEN}=================================${NC}"
 echo -e "${GREEN}所有服务已启动！${NC}"
