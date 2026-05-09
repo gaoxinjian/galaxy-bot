@@ -16,3 +16,4 @@ backend/node_modules/
 __pycache__/
 **/chat.db
 backend/data/chat.db
+.galaxy-bot.pids
