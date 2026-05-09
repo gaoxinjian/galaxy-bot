@@ -15,18 +15,14 @@
   }: Props = $props();
 
   let textareaRef: HTMLTextAreaElement | undefined = $state();
-  const MAX_HEIGHT = 150; // 最大高度 150px
+  const MAX_HEIGHT = 150; 
 
   function adjustHeight() {
-    console.log("调整输入框高度:", textareaRef);
     if (!textareaRef) return;
-    // 先重置高度，以便获得正确的 scrollHeight
     textareaRef.style.height = 'auto';
     const scrollHeight = textareaRef.scrollHeight;
-    console.log('调整高度，内容高度:', scrollHeight);
     const newHeight = Math.min(scrollHeight, MAX_HEIGHT);
     textareaRef.style.height = `${newHeight}px`;
-    // 如果内容高度超过最大高度，显示滚动条，否则隐藏
     textareaRef.style.overflowY = scrollHeight > MAX_HEIGHT ? 'auto' : 'hidden';
   }
 

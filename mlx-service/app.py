@@ -174,10 +174,12 @@ def stream_chat(model, tokenizer, prompt, req, request_id):
             max_tokens=req.max_tokens,
             sampler=sampler
         ):
-            last_response = response
-
-            text = response.text
+            print(f"finish_reason: {response.finish_reason}, text: {response.text}")
+            if response.finish_reason is not None:
+                break
             
+            last_response = response
+            text = response.text
             # 跳过空内容
             if not text:
                 continue
@@ -239,6 +241,7 @@ def chat_completions(req: ChatCompletionRequest):
     
     # logging.info(f"{req}")
     # 只能给openclaw单独一个模型来写死think=false
+    # 现在先不做
     # req.think = False
 
     prompt = build_prompt(

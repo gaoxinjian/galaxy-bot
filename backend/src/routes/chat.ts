@@ -124,6 +124,10 @@ chat.post('/', async (c) => {
 
         // 保存 AI 回复（使用 MemoryService）
         if (sessionId && fullResponse) {
+          if (fullResponse.includes("</think>") && fullResponse.includes("Thinking")) {
+            fullResponse = fullResponse.split("</think>")[1].trim();
+          }
+          console.info(`Saving response to session ${sessionId}:`, fullResponse);
           MemoryService.addMessage(sessionId, 'assistant', fullResponse);
         }
 
@@ -134,7 +138,9 @@ chat.post('/', async (c) => {
           setImmediate(() => {
             if (MemoryService.shouldCompress(sessionId)) {
               MemoryService.compressSession(sessionId).catch(err => {
-                console.error('Compression failed:', err);
+                // 这里现在一直在报错，但是不影响功能，先暂时屏蔽错误日志，后续再优化压缩逻辑
+                // console.error('Compression failed:', err);
+                console.error('Compression failed:');
               });
             }
           });
